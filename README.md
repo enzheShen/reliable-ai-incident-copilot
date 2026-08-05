@@ -1,5 +1,7 @@
 # Reliable AI Incident Copilot
 
+[![CI](https://github.com/enzheShen/reliable-ai-incident-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/enzheShen/reliable-ai-incident-copilot/actions/workflows/ci.yml)
+
 A production-style portfolio project that turns structured service-incident telemetry into a validated, evidence-linked assessment and degrades explicitly when its AI provider fails.
 
 ![Incident assessment UI](docs/images/incident-analysis.png)
