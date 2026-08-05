@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: incident_copilot_test
+          POSTGRES_USER: incident
+          POSTGRES_PASSWORD: incident
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U incident -d incident_copilot_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://incident:incident@localhost:5432/incident_copilot_test
+      REDIS_URL: redis://localhost:6379/0
+      INTEGRATION_DATABASE_URL: postgresql+psycopg://incident:incident@localhost:5432/incident_copilot_test
+      INTEGRATION_REDIS_URL: redis://localhost:6379/1
+      DATA_DIR: ../data
+      LLM_MODE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Install backend
+        working-directory: backend
+        run: pip install ".[dev]"
+      - name: Ruff
+        working-directory: backend
+        run: ruff check .
+      - name: mypy
+        working-directory: backend
+        run: mypy app
+      - name: Migration smoke test
+        working-directory: backend
+        run: alembic upgrade head
+      - name: pytest
+        working-directory: backend
+        run: pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: ESLint
+        working-directory: frontend
+        run: pnpm lint
+      - name: TypeScript
+        working-directory: frontend
+        run: pnpm typecheck
+      - name: Vitest
+        working-directory: frontend
+        run: pnpm test:run
+      - name: Production build
+        working-directory: frontend
+        run: pnpm build
+
+  containers-and-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile .
+      - name: Build frontend image
+        run: docker build frontend
+      - name: Build mock provider image
+        run: docker build mock-llm
+      - name: Check sensitive files and key patterns
+        shell: bash
+        run: |
+          test ! -f .env
+          if git ls-files | grep -E '(^|/)(\.env|id_rsa|credentials\.json)$'; then
+            echo "Sensitive file is tracked" >&2
+            exit 1
+          fi
+          provider_prefix='sk''-ant-'
+          key_variable='ANTHROPIC_''API_KEY'
+          if git grep -nE "(${provider_prefix}[A-Za-z0-9_-]{16,}|${key_variable}=.{8,})" -- ':!.env.example'; then
+            echo "Potential provider secret is tracked" >&2
+            exit 1
+          fi

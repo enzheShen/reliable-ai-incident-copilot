@@ -1,0 +1,151 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "slug": "api-latency-spike",
+    "title": "API latency spike",
+    "keywords": [
+      "latency",
+      "p95",
+      "slow request",
+      "timeout"
+    ],
+    "content": "Confirm p50/p95 by route and compare error rate with the last healthy window. Check downstream timings and saturation before scaling. Roll back a correlated release when evidence supports it; otherwise shed optional work and capture traces."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "slug": "database-connection-saturation",
+    "title": "Database connection saturation",
+    "keywords": [
+      "database",
+      "connection pool",
+      "too many clients",
+      "pool timeout"
+    ],
+    "content": "Inspect active, idle, and waiting database sessions plus pool checkout time. Stop connection leaks or expensive callers before increasing limits. Protect the database with bounded pools, terminate only verified abandoned sessions, and validate query latency after recovery."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000003",
+    "slug": "redis-outage",
+    "title": "Redis outage",
+    "keywords": [
+      "redis",
+      "cache",
+      "connection refused",
+      "readonly"
+    ],
+    "content": "Check Redis reachability, role, memory, and recent failover events. Disable nonessential cache traffic and use the documented degraded path. Restore the correct primary, verify writes and expiry, then reintroduce traffic gradually to avoid a cache stampede."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000004",
+    "slug": "authentication-failure",
+    "title": "Authentication failure",
+    "keywords": [
+      "authentication",
+      "401",
+      "token",
+      "signature",
+      "jwks"
+    ],
+    "content": "Segment failures by client, issuer, and token validation reason without logging tokens. Verify clock skew, signing-key publication, and issuer configuration. Restore the last known key/configuration if a rotation caused the issue and require security review for unexplained failures."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000005",
+    "slug": "rate-limit-spike",
+    "title": "Rate-limit spike",
+    "keywords": [
+      "rate limit",
+      "429",
+      "quota",
+      "throttle"
+    ],
+    "content": "Identify the clients and routes consuming quota and confirm whether traffic is legitimate. Preserve protective limits during dependency saturation. Apply a scoped temporary quota only with capacity evidence, communicate retry guidance, and monitor rejection and saturation together."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000006",
+    "slug": "upstream-dependency-timeout",
+    "title": "Upstream dependency timeout",
+    "keywords": [
+      "upstream",
+      "dependency",
+      "deadline exceeded",
+      "gateway timeout",
+      "504"
+    ],
+    "content": "Measure upstream latency and timeout rates by operation. Confirm client deadlines and retry amplification. Open the circuit or use a safe fallback, reduce nonessential calls, and contact the dependency owner with correlation IDs and measured windows."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000007",
+    "slug": "memory-leak",
+    "title": "Memory leak",
+    "keywords": [
+      "memory",
+      "oom",
+      "heap",
+      "rss",
+      "out of memory"
+    ],
+    "content": "Compare resident memory and heap growth against traffic and release time. Capture a bounded profile before restart when safe. Roll back a correlated build, restart instances gradually to protect capacity, and add a regression test for the retained allocation path."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000008",
+    "slug": "cpu-saturation",
+    "title": "CPU saturation",
+    "keywords": [
+      "cpu",
+      "load average",
+      "throttling",
+      "run queue"
+    ],
+    "content": "Check CPU by instance, process, and request route alongside throttling and run queue. Identify hot loops or expensive requests with a short profile. Shed optional work, roll back a correlated change, or scale within known limits, then confirm latency recovery."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000009",
+    "slug": "disk-capacity-exhaustion",
+    "title": "Disk capacity exhaustion",
+    "keywords": [
+      "disk",
+      "no space left",
+      "inode",
+      "filesystem"
+    ],
+    "content": "Check bytes and inode usage by mount, then locate the fastest-growing safe-to-inspect paths. Stop unbounded writers and rotate disposable logs using retention policy. Expand capacity only after controlling growth and verify database durability before deleting data."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000010",
+    "slug": "message-queue-backlog",
+    "title": "Message queue backlog",
+    "keywords": [
+      "queue",
+      "backlog",
+      "consumer lag",
+      "oldest message"
+    ],
+    "content": "Measure queue depth, oldest-message age, publish rate, and consumer success. Identify poison messages or a stalled consumer before scaling. Pause noncritical publishers, quarantine verified poison messages, and increase consumers only when downstream capacity is safe."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000011",
+    "slug": "tls-certificate-expiry",
+    "title": "TLS certificate expiry",
+    "keywords": [
+      "tls",
+      "certificate",
+      "x509",
+      "expired",
+      "handshake"
+    ],
+    "content": "Confirm the certificate chain, expiry, hostname, and affected endpoints from a trusted probe. Renew through the approved issuer, deploy the full chain, and verify from multiple clients. Never bypass certificate validation as a mitigation; add expiry alerting after recovery."
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000012",
+    "slug": "deployment-regression",
+    "title": "Deployment regression",
+    "keywords": [
+      "deployment",
+      "release",
+      "rollback",
+      "regression",
+      "new version"
+    ],
+    "content": "Correlate error, latency, and resource changes with rollout cohorts. Freeze the rollout and compare old and new versions. Roll back through the standard deployment path when causality is strong, verify recovery, and preserve logs and the minimal failing case."
+  }
+]

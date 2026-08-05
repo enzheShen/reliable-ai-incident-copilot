@@ -1,0 +1,81 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Analysis request rate",
+      "id": 1,
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(rate(http_requests_total{path=\"/api/v1/incidents/analyse\"}[5m]))", "legendFormat": "requests/s", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Valid request success rate",
+      "id": 2,
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [{ "expr": "sum(rate(http_requests_total{path=\"/api/v1/incidents/analyse\",status=~\"2..\"}[5m])) / clamp_min(sum(rate(http_requests_total{path=\"/api/v1/incidents/analyse\",status!~\"4..\"}[5m])), 0.000001)", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP p50 / p95 latency",
+      "id": 3,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{path=\"/api/v1/incidents/analyse\"}[5m])))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{path=\"/api/v1/incidents/analyse\"}[5m])))", "legendFormat": "p95", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Provider error rate",
+      "id": 4,
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
+      "targets": [{ "expr": "sum by (provider) (rate(llm_failures_total[5m]))", "legendFormat": "{{provider}}", "refId": "A" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fallback rate",
+      "id": 5,
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
+      "targets": [{ "expr": "sum by (primary) (rate(llm_fallback_total[5m]))", "legendFormat": "{{primary}}", "refId": "A" }]
+    },
+    {
+      "type": "gauge",
+      "title": "Cache hit rate",
+      "id": 6,
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [{ "expr": "sum(rate(cache_hits_total[5m])) / clamp_min(sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])), 0.000001)", "refId": "A" }]
+    },
+    {
+      "type": "stat",
+      "title": "Circuit breaker state",
+      "description": "0 closed, 0.5 half-open, 1 open",
+      "id": 7,
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 8 },
+      "targets": [{ "expr": "circuit_breaker_state", "legendFormat": "{{provider}}", "refId": "A" }]
+    },
+    {
+      "type": "barchart",
+      "title": "Severity distribution",
+      "id": 8,
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 8 },
+      "targets": [{ "expr": "sum by (severity) (increase(incident_assessments_total[$__range]))", "legendFormat": "{{severity}}", "refId": "A" }]
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": ["incident-copilot", "reliability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Reliable AI Incident Copilot",
+  "uid": "incident-copilot",
+  "version": 1
+}

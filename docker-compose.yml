@@ -1,0 +1,156 @@
+name: reliable-ai-incident-copilot
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: incident_copilot
+      POSTGRES_USER: incident
+      POSTGRES_PASSWORD: incident
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incident -d incident_copilot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  mock-llm:
+    build: ./mock-llm
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    ports:
+      - "8474:8474"
+      - "8666:8666"
+
+  toxiproxy-config:
+    image: curlimages/curl:8.12.1
+    depends_on:
+      - toxiproxy
+      - mock-llm
+    restart: "no"
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        until curl -sf http://toxiproxy:8474/version; do sleep 1; done;
+        curl -sf -X POST http://toxiproxy:8474/proxies
+        -H 'Content-Type: application/json'
+        -d '{"name":"mock_llm","listen":"0.0.0.0:8666","upstream":"mock-llm:8080"}'
+        || true
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://incident:incident@postgres:5432/incident_copilot}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      LLM_MODE: ${LLM_MODE:-mock}
+      MOCK_LLM_URL: ${MOCK_LLM_URL:-http://toxiproxy:8666}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-10}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      DATA_DIR: /app/data
+      REPORTS_DIR: /app/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      toxiproxy-config:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./reports:/app/reports
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-incident-copilot}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+
+  locust:
+    image: locustio/locust:2.33.2
+    profiles: ["loadtest"]
+    depends_on:
+      - backend
+    volumes:
+      - ./loadtests:/mnt/locust:ro
+      - ./data:/data:ro
+      - ./reports/loadtests:/reports
+    command:
+      - -f
+      - /mnt/locust/locustfile.py
+      - --host
+      - http://backend:8000
+      - --headless
+      - -u
+      - ${LOAD_USERS:-20}
+      - -r
+      - "4"
+      - -t
+      - ${LOAD_DURATION:-5m}
+      - --csv
+      - /reports/latest
+      - --html
+      - /reports/latest.html
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reliable-ai-incident-copilot-backend"
+version = "0.1.0"
+description = "FastAPI backend for Reliable AI Incident Copilot"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic==1.14.1",
+  "anthropic==0.49.0",
+  "fastapi==0.115.11",
+  "httpx==0.28.1",
+  "orjson==3.10.15",
+  "pgvector==0.3.6",
+  "prometheus-client==0.21.1",
+  "psycopg[binary,pool]==3.2.5",
+  "pydantic==2.10.6",
+  "pydantic-settings==2.8.1",
+  "python-json-logger==3.2.1",
+  "redis==5.2.1",
+  "sqlalchemy[asyncio]==2.0.38",
+  "tenacity==9.0.0",
+  "uvicorn[standard]==0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy==1.15.0",
+  "pytest==8.3.5",
+  "pytest-asyncio==0.25.3",
+  "pytest-cov==6.0.0",
+  "ruff==0.9.10",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = ["integration: requires PostgreSQL and Redis"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic"]
+
+[[tool.mypy.overrides]]
+module = ["pgvector.*"]
+ignore_missing_imports = true
