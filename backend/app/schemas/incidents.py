@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Annotated, Generic, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StringConstraints, field_validator
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 T = TypeVar("T")
@@ -41,7 +41,7 @@ class IncidentCreate(BaseModel):
     logs: Annotated[
         list[Annotated[str, StringConstraints(max_length=2_000)]], Field(max_length=100)
     ]
-    metrics: dict[Annotated[str, StringConstraints(min_length=1, max_length=100)], float]
+    metrics: dict[Annotated[str, StringConstraints(min_length=1, max_length=100)], FiniteFloat]
     recent_changes: Annotated[
         list[Annotated[str, StringConstraints(max_length=500)]], Field(max_length=50)
     ]

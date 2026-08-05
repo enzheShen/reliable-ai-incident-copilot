@@ -50,9 +50,9 @@ class ReliabilityRepository:
         buckets: dict[str, list[int]] = defaultdict(list)
         for created_at, processing_time_ms, _, _ in assessments:
             bucket_minute = created_at.minute - created_at.minute % 5
-            label = created_at.replace(minute=bucket_minute, second=0, microsecond=0).strftime(
-                "%H:%M"
-            )
+            label = created_at.replace(
+                minute=bucket_minute, second=0, microsecond=0
+            ).isoformat()
             buckets[label].append(processing_time_ms)
         cache_hits = events.count("cache_hit")
         cache_misses = events.count("cache_miss")
@@ -80,9 +80,15 @@ class ReliabilityRepository:
             ],
         )
 
-    async def events(self, limit: int = 50) -> list[ReliabilityEventResponse]:
+    async def events(
+        self, limit: int = 50, window_minutes: int = 60
+    ) -> list[ReliabilityEventResponse]:
+        since = datetime.now(UTC) - timedelta(minutes=window_minutes)
         statement = (
-            select(ReliabilityEvent).order_by(ReliabilityEvent.created_at.desc()).limit(limit)
+            select(ReliabilityEvent)
+            .where(ReliabilityEvent.created_at >= since)
+            .order_by(ReliabilityEvent.created_at.desc())
+            .limit(limit)
         )
         records = list((await self.session.execute(statement)).scalars())
         return [

@@ -19,4 +19,8 @@ When the primary provider fails, at least **95%** of otherwise valid analysis re
 
 ## Measurement
 
-Prometheus counters and histograms provide the production-style indicators. Deterministic evaluation, Locust, and the chaos demonstration provide reproducible local evidence; they do not establish a monthly uptime record.
+Prometheus counters and histograms provide production-style indicators. `analysis_failures_total` increments even when failure-event persistence is unavailable, while the reliability summary counts safe persisted success/failure events for valid requests. Client validation, rate limiting, and idempotency conflicts are excluded. Successful fallback responses remain successes and are tracked separately.
+
+The deterministic regression evaluation is an in-memory guard with no HTTP provider or database. The end-to-end mock evaluation uses PostgreSQL/pgvector, Redis, Toxiproxy, and the HTTP provider adapter on held-out synthetic cases. Neither supports a production or generalisation claim.
+
+Cold load evidence uses unique assessment inputs to exercise the provider path; warm load evidence repeats fixed inputs to exercise the cache path. The two modes are reported separately and cannot be combined to claim one latency SLO. Locust, evaluation, and chaos measurements are local evidence only and do not establish a monthly uptime record.

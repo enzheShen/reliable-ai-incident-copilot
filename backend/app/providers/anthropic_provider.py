@@ -23,7 +23,11 @@ class AnthropicProvider(Provider):
         client: anthropic.AsyncAnthropic | None = None,
     ) -> None:
         self.model = model
-        self.client = client or anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout_seconds)
+        self.client = client or anthropic.AsyncAnthropic(
+            api_key=api_key,
+            timeout=timeout_seconds,
+            max_retries=0,
+        )
 
     async def assess(
         self,

@@ -1,0 +1,23 @@
+{
+  "evaluation_type": "deterministic-regression",
+  "execution": "in-memory",
+  "http_provider_used": false,
+  "database_used": false,
+  "dataset": "checked-in synthetic regression cases",
+  "cases": 60,
+  "severity_accuracy": 1.0,
+  "runbook_recall_at_1": 1.0,
+  "runbook_recall_at_3": 1.0,
+  "serialized_output_validation_rate": 1.0,
+  "escalation_accuracy": 1.0,
+  "average_in_memory_processing_time_ms": 0.305,
+  "live_anthropic": {
+    "status": "skipped",
+    "reason": "ANTHROPIC_API_KEY is not configured"
+  },
+  "limitations": [
+    "No HTTP provider or database is used in this regression evaluation.",
+    "Timing is in-memory evaluation processing time, not API or provider latency.",
+    "These deterministic synthetic cases do not support a production or generalisation claim."
+  ]
+}

@@ -61,10 +61,10 @@ export function getIncident(id: string): Promise<IncidentDetail> {
   return request(`/incidents/${id}`)
 }
 
-export function getReliabilitySummary(): Promise<ReliabilitySummary> {
-  return request('/reliability/summary')
+export function getReliabilitySummary(windowMinutes = 60): Promise<ReliabilitySummary> {
+  return request(`/reliability/summary?window_minutes=${windowMinutes}`)
 }
 
-export function getReliabilityEvents(): Promise<ReliabilityEvent[]> {
-  return request('/reliability/events')
+export function getReliabilityEvents(windowMinutes = 60): Promise<ReliabilityEvent[]> {
+  return request(`/reliability/events?window_minutes=${windowMinutes}`)
 }

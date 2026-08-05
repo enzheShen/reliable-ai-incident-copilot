@@ -45,3 +45,8 @@ def add_toxic(name: str, toxic_type: str, attributes: Dict[str, Any]) -> None:
             "attributes": attributes,
         },
     )
+
+
+def list_toxics() -> list[dict[str, Any]]:
+    value = api("GET", f"/proxies/{PROXY_NAME}/toxics")
+    return value if isinstance(value, list) else []

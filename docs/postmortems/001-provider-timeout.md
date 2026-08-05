@@ -1,81 +1,61 @@
-# Postmortem 001: provider timeout
+# Postmortem 001: provider timeout budget
 
 ## Summary
 
-On 5 August 2026, a controlled Toxiproxy experiment added 15,000 ms of latency to
-the deterministic mock provider. The backend exhausted its 12-second per-attempt
-deadline and two retries, then returned a schema-valid rule-based fallback. The
-experiment passed all automated assertions and restored the dependency afterward.
+On 5 August 2026, two controlled Toxiproxy experiments added 15,000 ms of latency to the deterministic mock provider. The original implementation applied a 12-second timeout independently to the initial operation and two retries, returning a validated fallback after 36.446 seconds. After adding a 15-second total provider budget, the same experiment returned the fallback in 15.080 seconds.
+
+Both runs used synthetic data and local Docker services. No real user, production system, paid provider, or public deployment was involved.
 
 ## Impact
 
-- One synthetic analysis request took 36.446 seconds.
-- The request completed with HTTP 200 and `fallback_used=true`.
-- The fallback required human escalation and cited three retrieved runbooks.
-- No real users, production data, or external services were involved.
-- The 36.446-second response does not meet the project's mock p95 target; this was a
-  deliberate failure-path experiment, not part of the normal load measurement.
+- Baseline: one synthetic request took 36.446 seconds before fallback.
+- Corrected run: one synthetic request took 15.080 seconds and passed the 16-second chaos assertion.
+- Both responses used `rule-based-fallback` and required human escalation.
+- The current run increased `llm_fallback_total` by one and `provider_retry_attempts_total` by one.
+- Cleanup removed the latency toxic and verified an empty toxic list plus healthy dependencies.
 
-## Timeline
+The baseline latency did not meet the mock p95 target. Neither controlled request represents production traffic or establishes the fallback SLO.
 
-All timestamps are UTC and were written automatically by `make chaos-demo`.
+## Detection and evidence
 
-- `16:49:22.853` — Existing Toxiproxy toxics removed.
-- `16:49:24.900` — Backend and mock provider confirmed healthy.
-- `16:49:24.905` — 15,000 ms provider latency injected.
-- `16:50:01.352` — Timeout and retry path returned the validated fallback.
-- `16:50:01.355` — Prometheus fallback counter increase verified.
-- `16:50:01.366` — Toxic removed and dependency health restored.
+The runner asserts the response contract, fallback provider, escalation flag, monotonic request duration, Prometheus counter deltas, toxic removal, and restored health. The original machine-written files remain unchanged under [`reports/chaos/baseline-2026-08-05`](../../reports/chaos/baseline-2026-08-05/latest.json). The corrected run is in [`reports/chaos/latest.json`](../../reports/chaos/latest.json).
 
-## Detection
-
-The chaos runner detected the condition through the request deadline and then
-asserted the response contract, fallback provider, escalation flag, Prometheus
-counter delta, and post-cleanup health checks.
+The host UTC clock changed during the corrected run, so its wall-clock timeline is not suitable for calculating duration. The runner uses `time.monotonic()` for the 15.080-second budget assertion; both timestamp and monotonic evidence are retained rather than rewritten.
 
 ## Root cause
 
-The injected 15-second latency exceeded the configured 12-second timeout for each
-provider attempt. Because provider timeouts are retryable, the initial attempt and
-two permitted retries consumed approximately 36 seconds before the final fallback
-ran. The experiment intentionally created this condition; it was not an organic
-provider incident.
+The original retry loop had no shared end-to-end deadline. A 15-second injected response exceeded the 12-second attempt timeout three times, so retries extended user-visible latency to 36.446 seconds. The Anthropic SDK also retained its own default retries, which could multiply live-mode HTTP attempts beneath the application retry loop.
 
-## What worked
+## Corrective implementation
 
-- Provider output never bypassed Pydantic validation.
-- The final result clearly identified `rule-based-fallback` and required escalation.
-- The relevant `Upstream dependency timeout` runbook ranked first.
-- `llm_fallback_total` increased from 0 to 1.
-- Cleanup removed the toxic and both backend and mock-provider health recovered.
+- Anthropic `AsyncAnthropic` now sets `max_retries=0`.
+- The application remains the only retry owner and performs at most three operations.
+- `LLM_TOTAL_TIMEOUT_SECONDS` defaults to 15 seconds and includes operation time and retry waits.
+- Each operation receives `min(LLM_TIMEOUT_SECONDS, remaining total budget)`.
+- Prometheus exports retry-operation count and per-attempt duration without a retry-count label.
+- The chaos runner fails nonzero for experiment or cleanup failure and verifies the toxic list is empty.
 
-## What did not work
+## Before and after
 
-- Per-attempt deadlines allowed retries to extend total user-visible latency to
-  36.446 seconds.
-- The response contract does not currently expose retry count or the individual
-  attempt durations, so the report infers the retry sequence from configuration and
-  total duration.
+| Evidence | Baseline | Corrected run |
+| --- | ---: | ---: |
+| Injected latency | 15,000 ms | 15,000 ms |
+| Request duration | 36.446 s | 15.080 s |
+| Application retry metric | Not exported | +1 |
+| Fallback metric | +1 | +1 |
+| Fallback provider | `rule-based-fallback` | `rule-based-fallback` |
+| Human escalation | Required | Required |
+| Cleanup | Health restored | Empty toxic list and health restored |
 
 ## Corrective actions
 
-| Action | Owner | Status |
-| --- | --- | --- |
-| Add an end-to-end provider time budget and stop retries when insufficient budget remains | Backend maintainer | Planned |
-| Export retry-attempt count and per-attempt duration metrics | Observability maintainer | Planned |
-| Add a shorter timeout chaos case to CI while retaining the full local demo | Platform maintainer | Proposed |
-| Re-run the experiment after deadline budgeting and compare total fallback latency | Reliability maintainer | Pending |
+| Action | Status |
+| --- | --- |
+| Add and test a total provider budget | Completed |
+| Disable nested Anthropic SDK retries | Completed |
+| Export retry-attempt and attempt-duration metrics | Completed |
+| Make cleanup/report failure propagate a nonzero exit | Completed |
+| Re-run the full 15,000 ms experiment and retain baseline evidence | Completed |
+| Run recurring chaos in a stable CI environment | Not implemented |
 
-## Evidence
-
-- [`reports/chaos/latest.json`](../../reports/chaos/latest.json) contains the
-  machine-written timestamps, response, latency, and counter values.
-- [`reports/chaos/latest.md`](../../reports/chaos/latest.md) is the generated readable
-  experiment report.
-- The assessment ID was `633d243d-0457-445a-934d-69a09acb6ff6`.
-
-## Follow-up owners/status
-
-No corrective action is marked complete in this portfolio run. Ownership labels
-describe the project role responsible for the next iteration; they do not imply a
-staffed production team.
+No individual or production team ownership is implied by this portfolio exercise.

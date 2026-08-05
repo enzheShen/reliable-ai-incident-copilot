@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-5"
     llm_timeout_seconds: float = Field(default=12.0, gt=0, le=120)
+    llm_total_timeout_seconds: float = Field(default=15.0, gt=0, le=300)
     mock_llm_url: str = "http://localhost:8080"
 
     cache_ttl_seconds: int = Field(default=900, ge=1)

@@ -12,6 +12,7 @@ COPY backend/app ./app
 COPY backend/alembic.ini ./
 COPY backend/alembic ./alembic
 COPY backend/tests ./tests
+COPY chaos ./chaos
 COPY data ./data
 COPY frontend/src/types ./frontend/src/types
 

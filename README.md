@@ -50,14 +50,14 @@ The detailed request path and trust boundaries are documented in [docs/architect
 
 | Control | Behaviour |
 | --- | --- |
-| Timeout | Provider calls default to 12 seconds; configurable with `LLM_TIMEOUT_SECONDS` |
-| Retry | Connection errors, 429, and 5xx only; two retries with exponential backoff and jitter |
+| Timeout | Each provider attempt defaults to 12 seconds and all attempts share a 15-second total budget |
+| Retry | SDK retries are disabled; the application makes at most three operations for connection errors, 429, and 5xx, with budgeted backoff |
 | Circuit breaker | Opens after five consecutive failures, probes after 60 seconds, closes on probe success |
-| Structured output | Pydantic validates every provider response; malformed JSON gets one correction attempt |
+| Structured output | Pydantic validates every provider response; malformed JSON gets one correction attempt and evidence must map to incident input |
 | Fallback | Rule-based result is labelled and always sets `requires_human_escalation=true` |
 | Cache | Redis key covers normalized input, runbook versions, provider, and model; 15-minute TTL |
 | Rate limit | Redis-backed, 10 analysis requests per client per minute by default |
-| Idempotency | Reusing the same key and payload returns the original incident; payload drift returns 409 |
+| Idempotency | Active same-payload replay precedes rate limiting; payload drift returns 409 and expired keys can be reused |
 | Correlation | Safe request IDs appear in response headers, JSON logs, and request metrics |
 | Input safety | 64 KiB body limit, field constraints, production CORS allowlist, sensitive log redaction |
 
@@ -73,42 +73,43 @@ The [SLO](docs/slo.md) and [error-budget policy](docs/error-budget.md) define in
 
 ## Measured evaluation
 
-`make eval` evaluates all 60 checked-in synthetic cases without a network provider. The current report was generated on 5 August 2026; it was not entered by hand.
+`make eval` produces two distinct reports from checked-in synthetic data. The numbers below were generated on 5 August 2026 and were not entered by hand.
 
-| Metric | Measured result |
-| --- | ---: |
-| Severity accuracy | 100% |
-| Runbook recall@1 | 100% |
-| Runbook recall@3 | 100% |
-| Valid structured output rate | 100% |
-| Escalation accuracy | 100% |
-| Average processing time | 0.243 ms |
+| Evaluation | Cases | Severity | Recall@1 | Recall@3 | JSON boundary | Escalation | Average processing |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Deterministic regression | 60 | 100% | 100% | 100% | 100% | 100% | 0.305 ms in-memory |
+| End-to-end HTTP mock | 12 | 100% | 100% | 100% | 100% | 100% | 10.871 ms end-to-end |
 
-See [reports/evaluation/latest.md](reports/evaluation/latest.md) and [latest.json](reports/evaluation/latest.json). Live Anthropic evaluation is recorded as skipped because no API key was configured.
+The regression run is in-memory: it uses no HTTP provider or database and makes no production or generalisation claim. The end-to-end run uses perturbed held-out cases through `AnalysisService`, PostgreSQL/pgvector, Redis, Toxiproxy, and the actual HTTP mock-provider adapter; it recorded 12 provider requests, zero cache hits, and zero fallbacks. See the generated [evaluation summary](reports/evaluation/latest.md), [regression report](reports/evaluation/regression-latest.md), and [end-to-end report](reports/evaluation/end-to-end-latest.md). Live Anthropic was not run because no API key was configured and paid-provider use was outside this validation.
 
 ## Load and chaos results
 
-The following measurements came from the local Apple Silicon Docker Compose stack on 5 August 2026. They describe one controlled run, not production capacity or uptime.
+The following measurements came from the local Apple Silicon Docker Compose stack on 5 August 2026. They describe controlled synthetic runs, not production capacity, availability, or achieved uptime.
 
-| Five-minute load test | Measured result |
-| --- | ---: |
-| Concurrent users | 20 |
-| Recorded requests | 9,700 |
-| Throughput | 32.35 req/s |
-| Error rate | 0% |
-| p50 / p95 / p99 | 13 / 21 / 41 ms |
+| Five-minute configured load mode | Cold provider path | Warm cache path |
+| --- | ---: | ---: |
+| Concurrent users | 20 | 20 |
+| Locust CSV requests | 9,419 | 9,593 |
+| Failures | 0 | 0 |
+| Locust throughput | 15.40 req/s | 32.01 req/s |
+| p50 / p95 / p99 HTTP latency | 27 / 62 / 100 ms | 15 / 29 / 46 ms |
+| Cache hits / misses | 0 / 9,449 | 9,538 / 61 |
+| Cache-hit rate | 0% | 99.3645% |
+| Provider requests / fallbacks | 9,449 / 0 | 61 / 0 |
+| Observed wall clock | 613.474 s | 300.676 s |
 
-The measured mock-mode p95 was below the 3-second target. See the generated [load report](reports/loadtests/latest.md), [JSON](reports/loadtests/latest.json), and [Locust HTML report](reports/loadtests/latest.html).
+Cold gives every request a unique safe nonce and idempotency key, so it exercises the HTTP mock-provider path. Warm clears Redis and then repeats the fixed 60-fixture set. During the cold run the local host or Docker scheduler paused, extending the observed wall clock beyond the configured 300 seconds; the unadjusted Locust throughput is retained rather than normalised. Locust CSV and Prometheus can differ slightly because metrics include requests still in flight when the CSV writer closes. See the [comparison](reports/loadtests/comparison.md), [cold report](reports/loadtests/cold/latest.md), [warm report](reports/loadtests/warm/latest.md), and archived [9,700-request baseline](reports/loadtests/baseline-2026-08-05/latest.md).
 
-| Provider-latency chaos experiment | Measured result |
-| --- | ---: |
-| Injected latency | 15,000 ms |
-| Request duration | 36.446 s |
-| Returned provider | `rule-based-fallback` |
-| Fallback metric | 0 → 1 |
-| Dependency restored | Yes |
+| 15,000 ms provider-latency chaos | Before total budget | After total budget |
+| --- | ---: | ---: |
+| Request duration | 36.446 s | 15.080 s |
+| Returned provider | `rule-based-fallback` | `rule-based-fallback` |
+| Requires human escalation | Yes | Yes |
+| Fallback counter delta | +1 | +1 |
+| Retry-attempt counter delta | Not exported | +1 |
+| Toxic cleanup verified | Yes | Yes, empty toxic list |
 
-The chaos request passed all fallback assertions, but its 36.446-second latency exposes the need for an end-to-end retry budget. One successful experiment does not establish the 95% fallback SLO. See the generated [chaos report](reports/chaos/latest.md), [JSON](reports/chaos/latest.json), and evidence-based [postmortem](docs/postmortems/001-provider-timeout.md).
+The new run stayed within the 16-second assertion around the 15-second total provider budget. The original report remains unchanged in [baseline-2026-08-05](reports/chaos/baseline-2026-08-05/latest.md); the current [chaos report](reports/chaos/latest.md), [JSON](reports/chaos/latest.json), and [postmortem](docs/postmortems/001-provider-timeout.md) document the before/after evidence. One successful experiment does not establish the 95% fallback SLO.
 
 ### Grafana screenshot
 
@@ -149,6 +150,7 @@ Copy `.env.example` to the ignored `.env` file. Important settings include:
 | `ANTHROPIC_API_KEY` | empty | Optional paid-provider credential; never commit it |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Live provider model |
 | `LLM_TIMEOUT_SECONDS` | `12` | Per-attempt provider deadline |
+| `LLM_TOTAL_TIMEOUT_SECONDS` | `15` | Total provider-operation budget, including retry waits |
 | `CACHE_TTL_SECONDS` | `900` | Assessment cache lifetime |
 | `RATE_LIMIT_PER_MINUTE` | `10` | Per-client analysis limit |
 | `CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `5` | Consecutive failures before opening |
@@ -164,8 +166,10 @@ make stop          stop the stack
 make test          backend and frontend tests
 make lint          Ruff and ESLint
 make typecheck     mypy and TypeScript
-make eval          deterministic evaluation reports
-make load-test     20-user, five-minute Locust report
+make eval          regression and end-to-end mock evaluation reports
+make load-test-cold 20-user, five-minute provider-path report
+make load-test-warm 20-user, five-minute cache-path report
+make load-test     run cold then warm and generate a comparison
 make chaos-demo    Toxiproxy fallback experiment and report
 make seed          idempotently seed fixed data
 make migrate       apply Alembic migrations
@@ -194,7 +198,7 @@ The full API is available in Swagger. History responses use `{page, page_size, t
 
 ## Testing
 
-`make test` passes 30 backend tests against real PostgreSQL/pgvector and Redis plus five frontend tests. The isolated code-only backend run passes 26 tests and skips four infrastructure-dependent tests when integration URLs are absent. GitHub Actions configures pgvector and Redis services so those tests execute rather than skip.
+`make test` passes 59 backend tests against real PostgreSQL/pgvector and Redis plus 11 frontend tests. GitHub Actions configures pgvector and Redis services so integration tests execute rather than skip.
 
 Tests verify fields and state transitions, not just status codes. The contract suite compares Pydantic fields with the TypeScript interfaces to catch undetected response drift. CI never invokes Anthropic.
 
@@ -205,7 +209,7 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - Deterministic hashing retrieval is reproducible but not a semantic embedding model.
 - No monthly traffic history exists, so the SLOs remain targets; one local load run cannot establish availability.
 - Load and chaos results are single-machine experiments and should not be interpreted as production capacity.
-- The chaos experiment exposed a 36-second worst-path response because retries currently share no end-to-end deadline.
+- The cold run experienced a local wall-clock pause, so its unadjusted throughput is retained with that limitation.
 - There is no public deployment yet. **Live demo: not deployed.**
 
 ## Future work
@@ -213,7 +217,6 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - Add authentication and tenant-aware retention before accepting real incident data.
 - Compare a locally hosted embedding model against deterministic retrieval on a larger evaluation set.
 - Export OpenTelemetry traces and correlate provider spans with assessment IDs.
-- Add a total provider deadline, then repeat the timeout experiment and compare fallback latency.
 - Run scheduled load and chaos experiments in a stable CI environment.
 - Add a public deployment only after cost, privacy, and abuse controls are approved.
 

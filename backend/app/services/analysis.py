@@ -17,6 +17,8 @@ from app.observability.metrics import (
     LLM_FAILURES,
     LLM_FALLBACK,
     LLM_REQUESTS,
+    PROVIDER_ATTEMPT_DURATION,
+    PROVIDER_RETRY_ATTEMPTS,
 )
 from app.providers import (
     AnthropicProvider,
@@ -36,6 +38,7 @@ from app.reliability import (
 from app.reliability.cache import RedisCacheClient
 from app.repositories import RunbookMatch, RunbookRepository
 from app.schemas import IncidentCreate, ProviderAssessment
+from app.services.safety import apply_provider_safety_policy
 
 
 @dataclass(frozen=True)
@@ -136,6 +139,16 @@ class AnalysisService:
                 "cache_error", self.primary.name, {"error_type": type(exc).__name__}
             )
         if cached is not None:
+            try:
+                cached = apply_provider_safety_policy(incident, cached)
+            except ProviderError as exc:
+                cached = None
+                await self._record_event(
+                    "cache_invalid",
+                    self.primary.name,
+                    {"error_type": type(exc).__name__},
+                )
+        if cached is not None:
             CACHE_HITS.labels(self.primary.name).inc()
             await self._record_event("cache_hit", self.primary.name, {})
             return AnalysisOutcome(
@@ -156,9 +169,30 @@ class AnalysisService:
             previous_state = self.circuit_breaker.state
             await self.circuit_breaker.before_call()
             await self._record_transition(previous_state)
+            async def primary_operation() -> ProviderAssessment:
+                candidate = await self.primary.assess(incident, runbooks, prompt)
+                return apply_provider_safety_policy(incident, candidate)
+
+            def observe_attempt(
+                attempt_number: int, duration: float, error: BaseException | None
+            ) -> None:
+                if attempt_number > 1:
+                    PROVIDER_RETRY_ATTEMPTS.labels(self.primary.name, self.primary.model).inc()
+                if error is None:
+                    outcome = "success"
+                elif isinstance(error, ProviderError) and isinstance(error.__cause__, TimeoutError):
+                    outcome = "timeout"
+                else:
+                    outcome = "failure"
+                PROVIDER_ATTEMPT_DURATION.labels(
+                    self.primary.name, self.primary.model, outcome
+                ).observe(duration)
+
             result = await call_provider_with_retry(
-                lambda: self.primary.assess(incident, runbooks, prompt),
+                primary_operation,
                 self.settings.llm_timeout_seconds,
+                total_timeout_seconds=self.settings.llm_total_timeout_seconds,
+                on_attempt=observe_attempt,
             )
             LLM_REQUESTS.labels(self.primary.name, self.primary.model, "success").inc()
             LLM_DURATION.labels(self.primary.name, self.primary.model).observe(
@@ -188,7 +222,11 @@ class AnalysisService:
                 self.primary.name,
                 {"error_type": type(exc).__name__, "retryable": getattr(exc, "transient", False)},
             )
-            result = await self.fallback.assess(incident, runbooks, prompt)
+            result = apply_provider_safety_policy(
+                incident,
+                await self.fallback.assess(incident, runbooks, prompt),
+                fallback=True,
+            )
             fallback_used = True
             provider_used = self.fallback.name
             LLM_FALLBACK.labels(self.primary.name, self.fallback.name).inc()

@@ -21,6 +21,17 @@ LLM_DURATION = Histogram(
 LLM_FAILURES = Counter(
     "llm_failures_total", "Provider failures after retries", ("provider", "reason")
 )
+PROVIDER_RETRY_ATTEMPTS = Counter(
+    "provider_retry_attempts_total",
+    "Provider operations after the initial attempt",
+    ("provider", "model"),
+)
+PROVIDER_ATTEMPT_DURATION = Histogram(
+    "provider_attempt_duration_seconds",
+    "Duration of each application-managed provider attempt",
+    ("provider", "model", "outcome"),
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 8, 12, 15),
+)
 LLM_FALLBACK = Counter("llm_fallback_total", "Fallback assessments", ("primary", "fallback"))
 CIRCUIT_BREAKER_STATE = Gauge(
     "circuit_breaker_state",
@@ -36,4 +47,7 @@ INCIDENT_ASSESSMENTS = Counter(
 )
 READINESS_FAILURES = Counter(
     "readiness_check_failures_total", "Failed readiness dependency checks", ("dependency",)
+)
+ANALYSIS_FAILURES = Counter(
+    "analysis_failures_total", "Valid analysis requests that ended in an unrecovered server error"
 )

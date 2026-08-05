@@ -23,5 +23,6 @@ async def reliability_summary(
 async def reliability_events(
     session: SessionDependency,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    window_minutes: Annotated[int, Query(ge=5, le=10_080)] = 60,
 ) -> list[ReliabilityEventResponse]:
-    return await ReliabilityRepository(session).events(limit)
+    return await ReliabilityRepository(session).events(limit, window_minutes)

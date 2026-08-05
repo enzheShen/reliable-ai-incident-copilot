@@ -14,12 +14,14 @@ class IdempotencyRepository:
         self.session = session
 
     async def get(self, key: str) -> IdempotencyKey | None:
-        statement = select(IdempotencyKey).where(
-            IdempotencyKey.key == key,
-            IdempotencyKey.expires_at > datetime.now(UTC),
-        )
+        statement = select(IdempotencyKey).where(IdempotencyKey.key == key).with_for_update()
         result = await self.session.execute(statement)
-        return result.scalar_one_or_none()
+        record = result.scalar_one_or_none()
+        if record is not None and record.expires_at <= datetime.now(UTC):
+            await self.session.delete(record)
+            await self.session.flush()
+            return None
+        return record
 
     async def create(
         self,

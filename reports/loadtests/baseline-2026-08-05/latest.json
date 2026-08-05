@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-08-05T16:49:02.846706+00:00",
+  "users": 20,
+  "duration": "5m",
+  "request_count": 9700,
+  "failure_count": 0,
+  "error_rate": 0.0,
+  "throughput_requests_per_second": 32.35425333409856,
+  "p50_latency_ms": 13.0,
+  "p95_latency_ms": 21.0,
+  "p99_latency_ms": 41.0
+}

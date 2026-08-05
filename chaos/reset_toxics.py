@@ -1,4 +1,4 @@
-from toxiproxy import remove_toxic
+from chaos.toxiproxy import remove_toxic
 
 
 def reset() -> None:

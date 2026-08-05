@@ -1,14 +1,57 @@
 {
-  "mode": "deterministic-mock",
-  "cases": 60,
-  "severity_accuracy": 1.0,
-  "runbook_recall_at_1": 1.0,
-  "runbook_recall_at_3": 1.0,
-  "valid_structured_output_rate": 1.0,
-  "escalation_accuracy": 1.0,
-  "average_processing_time_ms": 0.243,
-  "live_anthropic": {
-    "status": "skipped",
-    "reason": "ANTHROPIC_API_KEY is not configured"
+  "generated_at": "2026-08-05T18:10:55.699320+00:00",
+  "regression": {
+    "evaluation_type": "deterministic-regression",
+    "execution": "in-memory",
+    "http_provider_used": false,
+    "database_used": false,
+    "dataset": "checked-in synthetic regression cases",
+    "cases": 60,
+    "severity_accuracy": 1.0,
+    "runbook_recall_at_1": 1.0,
+    "runbook_recall_at_3": 1.0,
+    "serialized_output_validation_rate": 1.0,
+    "escalation_accuracy": 1.0,
+    "average_in_memory_processing_time_ms": 0.305,
+    "live_anthropic": {
+      "status": "skipped",
+      "reason": "ANTHROPIC_API_KEY is not configured"
+    },
+    "limitations": [
+      "No HTTP provider or database is used in this regression evaluation.",
+      "Timing is in-memory evaluation processing time, not API or provider latency.",
+      "These deterministic synthetic cases do not support a production or generalisation claim."
+    ]
+  },
+  "end_to_end_mock": {
+    "evaluation_type": "end-to-end-mock",
+    "execution": "AnalysisService",
+    "http_provider_used": true,
+    "provider": "deterministic-mock/mock-v1 via Toxiproxy",
+    "database_used": true,
+    "database_features": [
+      "PostgreSQL",
+      "pgvector runbook retrieval"
+    ],
+    "dataset": "checked-in held-out perturbed synthetic cases",
+    "cases": 12,
+    "severity_accuracy": 1.0,
+    "runbook_recall_at_1": 1.0,
+    "runbook_recall_at_3": 1.0,
+    "serialized_output_validation_rate": 1.0,
+    "escalation_accuracy": 1.0,
+    "average_end_to_end_processing_time_ms": 10.871,
+    "provider_request_count": 12,
+    "cache_hit_count": 0,
+    "fallback_count": 0,
+    "live_anthropic": {
+      "status": "skipped",
+      "reason": "ANTHROPIC_API_KEY is not configured"
+    },
+    "limitations": [
+      "The provider is deterministic and local; live Anthropic was not called.",
+      "The held-out data is synthetic and intentionally small.",
+      "Local Docker results do not establish production performance or generalisation."
+    ]
   }
 }

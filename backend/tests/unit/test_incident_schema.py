@@ -44,3 +44,19 @@ def test_incident_create_limits_log_length() -> None:
     payload["logs"] = ["x" * 2_001]
     with pytest.raises(ValidationError):
         IncidentCreate.model_validate(payload)
+
+
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), float("-inf"), "1e400"])
+def test_incident_create_rejects_non_finite_metrics(invalid: object) -> None:
+    payload = valid_payload()
+    payload["metrics"] = {"bad": invalid}
+    with pytest.raises(ValidationError):
+        IncidentCreate.model_validate(payload)
+
+
+def test_production_cors_rejects_wildcard() -> None:
+    from app.config import Settings
+
+    settings = Settings(_env_file=None, app_env="production", cors_origins=["*"])
+    with pytest.raises(ValueError, match="Wildcard CORS"):
+        settings.validated_cors_origins()

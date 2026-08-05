@@ -1,7 +1,7 @@
 SHELL := /bin/sh
 COMPOSE := docker compose
 
-.PHONY: bootstrap dev stop test lint typecheck eval load-test chaos-demo seed migrate clean
+.PHONY: bootstrap dev stop test lint typecheck eval load-test load-test-cold load-test-warm chaos-demo seed migrate clean
 
 bootstrap:
 	test -f .env || cp .env.example .env
@@ -27,22 +27,35 @@ test:
 	$(COMPOSE) run --rm --build frontend pnpm test:run
 
 lint:
-	$(COMPOSE) run --rm backend ruff check .
-	$(COMPOSE) run --rm frontend npm run lint
+	$(COMPOSE) run --rm --build backend ruff check .
+	$(COMPOSE) run --rm --build frontend npm run lint
 
 typecheck:
-	$(COMPOSE) run --rm backend mypy app
-	$(COMPOSE) run --rm frontend npm run typecheck
+	$(COMPOSE) run --rm --build backend mypy app
+	$(COMPOSE) run --rm --build frontend npm run typecheck
 
 eval:
-	$(COMPOSE) run --rm backend python -m app.evaluation
+	$(COMPOSE) up -d postgres redis mock-llm toxiproxy toxiproxy-config
+	-$(COMPOSE) exec -T postgres createdb -U incident incident_copilot_eval
+	$(COMPOSE) run --rm --build \
+		-e DATABASE_URL=postgresql+psycopg://incident:incident@postgres:5432/incident_copilot_eval \
+		-e REDIS_URL=redis://redis:6379/2 \
+		backend sh -c 'alembic upgrade head && python -m app.seed && python -m app.evaluation'
 
 load-test:
-	sh loadtests/run.sh
+	$(MAKE) load-test-cold
+	$(MAKE) load-test-warm
+	python3 loadtests/compare.py
+
+load-test-cold:
+	sh loadtests/run.sh cold
+
+load-test-warm:
+	sh loadtests/run.sh warm
 
 chaos-demo:
 	$(COMPOSE) up -d --build
-	python3 chaos/run_demo.py
+	python3 -m chaos.run_demo
 
 seed:
 	$(COMPOSE) run --rm backend python -m app.seed

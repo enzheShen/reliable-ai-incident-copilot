@@ -1,37 +1,39 @@
 {
-  "started_at": "2026-08-05T16:49:22.835122+00:00",
+  "started_at": "2026-08-05T18:34:06.471214+00:00",
   "status": "passed",
   "latency_ms": 15000,
+  "max_request_seconds": 16.0,
   "timeline": [
     {
-      "at": "2026-08-05T16:49:22.853255+00:00",
+      "at": "2026-08-05T18:34:06.483385+00:00",
       "event": "Removed existing provider toxics"
     },
     {
-      "at": "2026-08-05T16:49:24.900231+00:00",
+      "at": "2026-08-05T18:34:07.522006+00:00",
       "event": "Backend and mock provider confirmed healthy"
     },
     {
-      "at": "2026-08-05T16:49:24.905678+00:00",
+      "at": "2026-08-05T18:34:07.531659+00:00",
       "event": "Injected downstream provider latency"
     },
     {
-      "at": "2026-08-05T16:50:01.352393+00:00",
-      "event": "Timeout and retry path returned validated rule-based fallback"
+      "at": "2026-08-05T18:49:22.413464+00:00",
+      "event": "Total-budget retry path returned validated rule-based fallback"
     },
     {
-      "at": "2026-08-05T16:50:01.355601+00:00",
-      "event": "Prometheus fallback counter increase verified"
+      "at": "2026-08-05T18:49:22.420449+00:00",
+      "event": "Prometheus fallback and retry-attempt counter increases verified"
     },
     {
-      "at": "2026-08-05T16:50:01.366017+00:00",
+      "at": "2026-08-05T18:49:22.431682+00:00",
       "event": "Toxics removed and dependency health restored"
     }
   ],
   "fallback_metric_before": 0.0,
-  "request_duration_seconds": 36.446,
+  "retry_metric_before": 0.0,
+  "request_duration_seconds": 15.08,
   "assessment": {
-    "incident_id": "633d243d-0457-445a-934d-69a09acb6ff6",
+    "incident_id": "45bebbe9-0e82-40f4-b976-ada29a75eb28",
     "severity": "SEV2",
     "summary": "chaos-demo-api: The mock upstream dependency exceeds its response deadline.",
     "likely_causes": [
@@ -68,11 +70,16 @@
     "requires_human_escalation": true,
     "provider_used": "rule-based-fallback",
     "fallback_used": true,
-    "processing_time_ms": 36410,
-    "created_at": "2026-08-05T16:49:24.915654Z",
+    "processing_time_ms": 15020,
+    "created_at": "2026-08-05T18:34:07.542677Z",
     "cache_hit": false
   },
   "provider_used": "rule-based-fallback",
   "fallback_metric_after": 1.0,
-  "finished_at": "2026-08-05T16:50:01.366030+00:00"
+  "retry_metric_after": 1.0,
+  "fallback_metric_delta": 1.0,
+  "retry_metric_delta": 1.0,
+  "remaining_toxics": [],
+  "toxic_cleanup_verified": true,
+  "finished_at": "2026-08-05T18:49:22.431696+00:00"
 }
