@@ -4,7 +4,7 @@ A production-style portfolio project that turns structured service-incident tele
 
 ![Incident assessment UI](docs/images/incident-analysis.png)
 
-_The UI above was captured with a synthetic local visual-QA response. It demonstrates the rendered contract, not an end-to-end availability result._
+_Captured from the Docker Compose stack after a real mock-provider analysis; all incident data is synthetic._
 
 ## Why this project
 
@@ -80,21 +80,39 @@ The [SLO](docs/slo.md) and [error-budget policy](docs/error-budget.md) define in
 | Runbook recall@3 | 100% |
 | Valid structured output rate | 100% |
 | Escalation accuracy | 100% |
-| Average processing time | 0.223 ms |
+| Average processing time | 0.243 ms |
 
 See [reports/evaluation/latest.md](reports/evaluation/latest.md) and [latest.json](reports/evaluation/latest.json). Live Anthropic evaluation is recorded as skipped because no API key was configured.
 
-## Load and chaos status
+## Load and chaos results
 
-The automation is implemented, but this checkout has not produced Docker-backed load or chaos measurements because Docker is not available in the current Mac environment. No result is claimed in its place.
+The following measurements came from the local Apple Silicon Docker Compose stack on 5 August 2026. They describe one controlled run, not production capacity or uptime.
 
-- `make load-test` starts mock mode with a load-test-only rate-limit override, runs 20 concurrent users for five minutes, and writes throughput, error rate, p50, p95, and p99 to `reports/loadtests/`.
-- `make chaos-demo` clears old toxics, verifies health, injects 15-second mock-provider latency, verifies timeout/retry/fallback and the Prometheus counter delta, restores health, and writes evidence to `reports/chaos/`.
-- `docs/postmortems/001-provider-timeout.md` is intentionally not present until a real chaos run supplies its timestamps and metrics.
+| Five-minute load test | Measured result |
+| --- | ---: |
+| Concurrent users | 20 |
+| Recorded requests | 9,700 |
+| Throughput | 32.35 req/s |
+| Error rate | 0% |
+| p50 / p95 / p99 | 13 / 21 / 41 ms |
+
+The measured mock-mode p95 was below the 3-second target. See the generated [load report](reports/loadtests/latest.md), [JSON](reports/loadtests/latest.json), and [Locust HTML report](reports/loadtests/latest.html).
+
+| Provider-latency chaos experiment | Measured result |
+| --- | ---: |
+| Injected latency | 15,000 ms |
+| Request duration | 36.446 s |
+| Returned provider | `rule-based-fallback` |
+| Fallback metric | 0 → 1 |
+| Dependency restored | Yes |
+
+The chaos request passed all fallback assertions, but its 36.446-second latency exposes the need for an end-to-end retry budget. One successful experiment does not establish the 95% fallback SLO. See the generated [chaos report](reports/chaos/latest.md), [JSON](reports/chaos/latest.json), and evidence-based [postmortem](docs/postmortems/001-provider-timeout.md).
 
 ### Grafana screenshot
 
-The dashboard is provisioned from [incident-copilot.json](observability/grafana/dashboards/incident-copilot.json) with request rate, success rate, p50/p95, provider errors, fallback rate, cache hit rate, circuit state, and severity distribution. A screenshot will be added only after the dashboard has been started and populated through Docker; a fabricated panel is not included here.
+The dashboard is provisioned from [incident-copilot.json](observability/grafana/dashboards/incident-copilot.json) with request rate, success rate, p50/p95, provider errors, fallback rate, cache hit rate, circuit state, and severity distribution.
+
+![Provisioned Grafana dashboard after load and chaos experiments](docs/images/grafana-dashboard.png)
 
 ## Run locally
 
@@ -174,7 +192,7 @@ The full API is available in Swagger. History responses use `{page, page_size, t
 
 ## Testing
 
-The local code-only run currently passes 26 tests and skips four infrastructure tests when PostgreSQL and Redis URLs are absent. GitHub Actions configures real pgvector and Redis services so repository, migration, cache, rate-limit, readiness, idempotency, and API integration tests execute rather than skip.
+`make test` passes 30 backend tests against real PostgreSQL/pgvector and Redis plus five frontend tests. The isolated code-only backend run passes 26 tests and skips four infrastructure-dependent tests when integration URLs are absent. GitHub Actions configures pgvector and Redis services so those tests execute rather than skip.
 
 Tests verify fields and state transitions, not just status codes. The contract suite compares Pydantic fields with the TypeScript interfaces to catch undetected response drift. CI never invokes Anthropic.
 
@@ -183,8 +201,9 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - This version has no authentication, tenancy, or field-level encryption and must use synthetic data.
 - The in-process circuit breaker is per backend process; a multi-replica deployment would require shared breaker state or coordinated routing.
 - Deterministic hashing retrieval is reproducible but not a semantic embedding model.
-- No monthly traffic history exists, so the SLOs remain targets.
-- Docker-backed integration, load, chaos, Grafana screenshot, and postmortem evidence remain pending in this checkout.
+- No monthly traffic history exists, so the SLOs remain targets; one local load run cannot establish availability.
+- Load and chaos results are single-machine experiments and should not be interpreted as production capacity.
+- The chaos experiment exposed a 36-second worst-path response because retries currently share no end-to-end deadline.
 - There is no public deployment yet. **Live demo: not deployed.**
 
 ## Future work
@@ -192,7 +211,8 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - Add authentication and tenant-aware retention before accepting real incident data.
 - Compare a locally hosted embedding model against deterministic retrieval on a larger evaluation set.
 - Export OpenTelemetry traces and correlate provider spans with assessment IDs.
-- Run scheduled load and chaos experiments after establishing a stable CI environment.
+- Add a total provider deadline, then repeat the timeout experiment and compare fallback latency.
+- Run scheduled load and chaos experiments in a stable CI environment.
 - Add a public deployment only after cost, privacy, and abuse controls are approved.
 
 ## Documentation

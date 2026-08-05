@@ -6,7 +6,7 @@
   "runbook_recall_at_3": 1.0,
   "valid_structured_output_rate": 1.0,
   "escalation_accuracy": 1.0,
-  "average_processing_time_ms": 0.223,
+  "average_processing_time_ms": 0.243,
   "live_anthropic": {
     "status": "skipped",
     "reason": "ANTHROPIC_API_KEY is not configured"

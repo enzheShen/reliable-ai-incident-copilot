@@ -25,8 +25,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-def create_app() -> FastAPI:
-    application = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+def create_app(*, manage_resources: bool = True) -> FastAPI:
+    application = FastAPI(
+        title=settings.app_name,
+        version="0.1.0",
+        lifespan=lifespan if manage_resources else None,
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.validated_cors_origins(),

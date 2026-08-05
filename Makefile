@@ -16,8 +16,15 @@ stop:
 	$(COMPOSE) down
 
 test:
-	$(COMPOSE) run --rm backend pytest
-	$(COMPOSE) run --rm frontend npm run test:run
+	$(COMPOSE) up -d postgres redis mock-llm toxiproxy toxiproxy-config
+	-$(COMPOSE) exec -T postgres createdb -U incident incident_copilot_test
+	$(COMPOSE) run --rm --build \
+		-e DATABASE_URL=postgresql+psycopg://incident:incident@postgres:5432/incident_copilot_test \
+		-e REDIS_URL=redis://redis:6379/1 \
+		-e INTEGRATION_DATABASE_URL=postgresql+psycopg://incident:incident@postgres:5432/incident_copilot_test \
+		-e INTEGRATION_REDIS_URL=redis://redis:6379/1 \
+		backend pytest
+	$(COMPOSE) run --rm --build frontend pnpm test:run
 
 lint:
 	$(COMPOSE) run --rm backend ruff check .

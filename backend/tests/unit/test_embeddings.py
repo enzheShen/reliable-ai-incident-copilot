@@ -1,11 +1,12 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from app.services.embeddings import cosine_similarity, deterministic_embedding, runbook_embedding
 
-DATA_DIR = Path(__file__).parents[3] / "data"
+DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).parents[3] / "data"))
 
 
 def test_embedding_is_deterministic_and_normalized() -> None:

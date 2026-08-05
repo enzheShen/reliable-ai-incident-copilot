@@ -28,7 +28,7 @@ def test_uuid_paths_are_normalized_for_metric_labels() -> None:
 
 
 def test_liveness_correlation_metrics_and_body_limit() -> None:
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(manage_resources=False)) as client:
         live = client.get("/health/live", headers={"X-Correlation-ID": "test-request-1"})
         assert live.status_code == 200
         assert live.headers["X-Correlation-ID"] == "test-request-1"

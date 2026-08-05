@@ -2,7 +2,8 @@ FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PROJECT_ROOT=/app
 
 WORKDIR /app
 
@@ -12,6 +13,7 @@ COPY backend/alembic.ini ./
 COPY backend/alembic ./alembic
 COPY backend/tests ./tests
 COPY data ./data
+COPY frontend/src/types ./frontend/src/types
 
 RUN pip install --upgrade pip && pip install ".[dev]"
 

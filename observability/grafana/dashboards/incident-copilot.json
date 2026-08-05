@@ -62,11 +62,16 @@
       "targets": [{ "expr": "circuit_breaker_state", "legendFormat": "{{provider}}", "refId": "A" }]
     },
     {
-      "type": "barchart",
+      "type": "piechart",
       "title": "Severity distribution",
       "id": 8,
       "gridPos": { "h": 8, "w": 4, "x": 20, "y": 8 },
-      "targets": [{ "expr": "sum by (severity) (increase(incident_assessments_total[$__range]))", "legendFormat": "{{severity}}", "refId": "A" }]
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [{ "expr": "sum by (severity) (increase(incident_assessments_total[$__range]))", "instant": true, "legendFormat": "{{severity}}", "refId": "A" }]
     }
   ],
   "refresh": "15s",
@@ -77,5 +82,5 @@
   "timezone": "browser",
   "title": "Reliable AI Incident Copilot",
   "uid": "incident-copilot",
-  "version": 1
+  "version": 2
 }

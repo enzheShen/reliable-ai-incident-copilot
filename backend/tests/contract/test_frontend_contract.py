@@ -1,9 +1,11 @@
+import os
 import re
 from pathlib import Path
 
 from app.schemas import IncidentAssessment, IncidentCreate
 
-FRONTEND_TYPES = Path(__file__).parents[3] / "frontend/src/types/api.ts"
+PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", Path(__file__).parents[3]))
+FRONTEND_TYPES = PROJECT_ROOT / "frontend/src/types/api.ts"
 
 
 def interface_fields(source: str, name: str) -> set[str]:
