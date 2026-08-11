@@ -11,7 +11,7 @@ Publish a truthful, lightweight portfolio demo of Reliable AI Incident Copilot w
 - One public Render web service containing the built React SPA and FastAPI API.
 - One free Render Key Value instance for cache, rate limiting, circuit state, and idempotency support.
 - One free Neon PostgreSQL database with the `vector` extension for durable application data.
-- Repeatable Blueprint deployment from the public GitHub `main` branch. Automatic deployment can be enabled later by completing GitHub App re-authentication.
+- Automatic deployment from the GitHub `main` branch after CI checks pass.
 - Idempotent schema migration and synthetic seed data at service start.
 - Same-origin frontend/API traffic, avoiding cross-origin deployment complexity.
 - Public health, API documentation, demo analysis, history, and reliability pages.
@@ -91,6 +91,7 @@ No API key is required for the public deployment.
 - Durable store: Neon Free PostgreSQL in Frankfurt
 - Provider mode: deterministic rules; no paid model or API key
 - Verification: live/readiness health checks, SPA routes, Swagger, analysis, filtered history, reliability summary, and API 404 behavior passed
+- Release automation: Render GitHub credentials connected; deploys trigger only after GitHub Actions succeeds
 
 ## Release sequence
 
