@@ -4,6 +4,8 @@
 
 A production-style portfolio project that turns structured service-incident telemetry into a validated, evidence-linked assessment and degrades explicitly when its AI provider fails.
 
+**[Open the public demo](https://reliable-ai-incident-copilot.onrender.com)** — deployed as a Docker web service on Render Free with Neon PostgreSQL and Render Key Value. It uses the deterministic rule provider, synthetic data only, and no paid API key. The free web service may take 50 seconds or more to wake after inactivity.
+
 ![Incident assessment UI](docs/images/incident-analysis.png)
 
 _Captured from the Docker Compose stack after a real mock-provider analysis; all incident data is synthetic._
@@ -210,7 +212,8 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - No monthly traffic history exists, so the SLOs remain targets; one local load run cannot establish availability.
 - Load and chaos results are single-machine experiments and should not be interpreted as production capacity.
 - The cold run experienced a local wall-clock pause, so its unadjusted throughput is retained with that limitation.
-- There is no public deployment yet. **Live demo: not deployed.**
+- The public demo runs on free infrastructure, may cold-start after inactivity, and is not an availability or capacity claim.
+- The public deployment intentionally uses deterministic rule mode; optional Anthropic mode remains a local, user-configured path.
 
 ## Future work
 
@@ -218,7 +221,7 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - Compare a locally hosted embedding model against deterministic retrieval on a larger evaluation set.
 - Export OpenTelemetry traces and correlate provider spans with assessment IDs.
 - Run scheduled load and chaos experiments in a stable CI environment.
-- Add a public deployment only after cost, privacy, and abuse controls are approved.
+- Add authentication, abuse monitoring, and retention controls before considering non-synthetic inputs.
 
 ## Documentation
 
