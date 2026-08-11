@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: reliable-ai-incident-copilot
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: reliable-ai-incident-copilot-cache
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: "[]"
+      - key: MAX_INCIDENT_BODY_BYTES
+        value: "65536"
+      - key: DATA_DIR
+        value: /app/data
+      - key: REPORTS_DIR
+        value: /app/reports
+      - key: FRONTEND_DIST_DIR
+        value: /app/frontend/dist
+      - key: LLM_MODE
+        value: rules
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "10"
+      - key: CACHE_TTL_SECONDS
+        value: "900"
+      - key: CIRCUIT_BREAKER_FAILURE_THRESHOLD
+        value: "5"
+      - key: CIRCUIT_BREAKER_RECOVERY_SECONDS
+        value: "60"
+      - key: IDEMPOTENCY_TTL_SECONDS
+        value: "86400"
+
+  - type: keyvalue
+    name: reliable-ai-incident-copilot-cache
+    plan: free
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+    persistenceMode: off

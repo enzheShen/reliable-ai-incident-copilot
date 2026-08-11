@@ -9,11 +9,16 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from app.config import sqlalchemy_database_url
 from app.models import Base
 
 config = context.config
 if database_url := os.getenv("DATABASE_URL"):
-    config.set_main_option("sqlalchemy.url", database_url)
+    # Render/Neon expose a generic PostgreSQL URL; select the installed async
+    # psycopg 3 driver explicitly. Escape interpolation tokens for ConfigParser.
+    config.set_main_option(
+        "sqlalchemy.url", sqlalchemy_database_url(database_url).replace("%", "%%")
+    )
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

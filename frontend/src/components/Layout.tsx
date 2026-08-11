@@ -28,7 +28,7 @@ export function Layout() {
         </div>
       </header>
       <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12"><Outlet /></main>
-      <footer className="mx-auto max-w-[1500px] border-t border-ink/10 px-6 py-6 text-xs text-ink/50">Synthetic incident data only · Mock mode requires no paid API key</footer>
+      <footer className="mx-auto max-w-[1500px] border-t border-ink/10 px-6 py-6 text-xs text-ink/50">Synthetic incident data only · The public demo requires no paid API key</footer>
     </div>
   )
 }

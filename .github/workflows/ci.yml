@@ -57,6 +57,9 @@ jobs:
         run: mypy app
       - name: Migration smoke test
         working-directory: backend
+        env:
+          # Match the generic URL format supplied by hosted PostgreSQL providers.
+          DATABASE_URL: postgresql://incident:incident@localhost:5432/incident_copilot_test
         run: alembic upgrade head
       - name: pytest
         working-directory: backend

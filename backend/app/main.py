@@ -10,6 +10,7 @@ from app.api import api_router
 from app.api.health import router as health_router
 from app.config import get_settings
 from app.database import engine
+from app.frontend import mount_frontend
 from app.logging import configure_logging
 from app.observability.middleware import BodySizeLimitMiddleware, ObservabilityMiddleware
 from app.redis_client import redis_client
@@ -48,6 +49,11 @@ def create_app(*, manage_resources: bool = True) -> FastAPI:
     async def metrics() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+    mount_frontend(
+        application,
+        settings.frontend_dist_dir,
+        required=settings.app_env == "production",
+    )
     return application
 
 

@@ -61,6 +61,8 @@ def configured_primary_provider(settings: Settings) -> Provider:
             model=settings.anthropic_model,
             timeout_seconds=settings.llm_timeout_seconds,
         )
+    if settings.llm_mode == "rules":
+        return RuleBasedFallbackProvider()
     return DeterministicMockProvider(settings.mock_llm_url, settings.llm_timeout_seconds)
 
 

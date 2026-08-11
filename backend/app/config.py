@@ -1,8 +1,18 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def sqlalchemy_database_url(value: str) -> str:
+    """Return a SQLAlchemy URL that explicitly selects the psycopg 3 driver."""
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    return value
 
 
 class Settings(BaseSettings):
@@ -17,8 +27,9 @@ class Settings(BaseSettings):
     max_incident_body_bytes: int = Field(default=65_536, ge=1_024, le=1_048_576)
     data_dir: Path = Path("../data")
     reports_dir: Path = Path("../reports")
+    frontend_dist_dir: Path = Path("../frontend/dist")
 
-    llm_mode: str = "mock"
+    llm_mode: Literal["mock", "live", "rules"] = "mock"
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-5"
     llm_timeout_seconds: float = Field(default=12.0, gt=0, le=120)
@@ -30,6 +41,13 @@ class Settings(BaseSettings):
     circuit_breaker_failure_threshold: int = Field(default=5, ge=1)
     circuit_breaker_recovery_seconds: int = Field(default=60, ge=1)
     idempotency_ttl_seconds: int = Field(default=86_400, ge=60)
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        return sqlalchemy_database_url(value)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

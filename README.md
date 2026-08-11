@@ -146,7 +146,7 @@ Copy `.env.example` to the ignored `.env` file. Important settings include:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `LLM_MODE` | `mock` | Selects deterministic mock or optional live mode |
+| `LLM_MODE` | `mock` | Selects deterministic HTTP mock, no-key rules, or optional live mode |
 | `ANTHROPIC_API_KEY` | empty | Optional paid-provider credential; never commit it |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Live provider model |
 | `LLM_TIMEOUT_SECONDS` | `12` | Per-attempt provider deadline |
@@ -198,7 +198,7 @@ The full API is available in Swagger. History responses use `{page, page_size, t
 
 ## Testing
 
-`make test` passes 59 backend tests against real PostgreSQL/pgvector and Redis plus 11 frontend tests. GitHub Actions configures pgvector and Redis services so integration tests execute rather than skip.
+`make test` passes 67 backend tests against real PostgreSQL/pgvector and Redis plus 11 frontend tests. GitHub Actions configures pgvector and Redis services so integration tests execute rather than skip.
 
 Tests verify fields and state transitions, not just status codes. The contract suite compares Pydantic fields with the TypeScript interfaces to catch undetected response drift. CI never invokes Anthropic.
 
@@ -226,5 +226,6 @@ Tests verify fields and state transitions, not just status codes. The contract s
 - [Threat model](docs/threat-model.md)
 - [Operator runbook](docs/runbook.md)
 - [Error-budget policy](docs/error-budget.md)
+- [Public demo deployment plan](docs/public-demo-deployment.md)
 
 MIT licensed. See [LICENSE](LICENSE).
